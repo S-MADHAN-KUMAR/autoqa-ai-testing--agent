@@ -2,6 +2,9 @@
 import { UserDetailContext } from '@/context/UserDetailContext'
 import Image from 'next/image';
 import React, { useContext } from 'react'
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
+import EmptyWorkspace from './EmptyWorkspace';
 
 function WorkspaceBody() {
 
@@ -15,10 +18,21 @@ function WorkspaceBody() {
             </div>
 
 
-            <div className={'mt-5'}>
-                <Image src={'/github.png'} alt='github' width={40} height={40} />
-                <h2 className='text-lg' >Connect Github & Add Repository</h2>
-            </div>
+            <Card className={'mt-5 flex justify-between items-center p-4 border rounded-lg'}>
+                <div className='flex items-center gap-5'>
+                    <Image src={'/github.png'} alt='github' width={40} height={40} />
+                    <h2 className='text-lg' >Connect Github & Add Repository</h2>
+                </div>
+                <div>
+                    <Button>Install</Button>
+                </div>
+            </Card>
+
+            <Card className='mt-10'>
+                <CardContent>
+                    <EmptyWorkspace />
+                </CardContent>
+            </Card>
         </div>
     )
 }
