@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { repositories } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -15,11 +16,25 @@ export async function POST(req: NextRequest) {
         htmlUrl: html_url,
         description,
         language,
-
+        defaultBranch: default_branch,
         owner
     }).returning();
 
     return NextResponse.json(result[0]);
 
 
+}
+
+
+export async function GET(req: NextRequest) {
+    const { searchParams } = new URL(req.url);
+
+    const userId = searchParams.get("userId");
+
+    const result = await db.select().from(repositories).where(
+        //@ts-ignore
+        eq(repositories.userId, userId)
+    )
+
+    return NextResponse.json(result);
 }
