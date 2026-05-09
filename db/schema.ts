@@ -9,5 +9,18 @@ export const users = pgTable("users", {
 });
 
 
+export const repositories = pgTable("repositories", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  repoId: integer("repo_id").notNull(),
+  name: text("name").notNull(),
+  fullName: text("full_name").notNull(),
+  private: integer("private").notNull(),
+  htmlUrl: text("html_url").notNull(),
+  description: text("description"),
+  owner: text("owner").notNull(),
+})
+
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
