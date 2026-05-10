@@ -23,6 +23,8 @@ export type UserRepo = {
     updatedAt: string;
     language: string;
     defaultBranch: string;
+    targetDomain?: string;
+    gloablInstruction?: string;
 }
 
 function WorkspaceBody() {
@@ -85,7 +87,7 @@ function WorkspaceBody() {
 
                 </CardContent>
             </Card> :
-                <UserRepoList repoList={userRepoList} />}
+                <UserRepoList repoList={userRepoList} setReload={() => GetUserAddedRepoList()} />}
 
 
         </div>
