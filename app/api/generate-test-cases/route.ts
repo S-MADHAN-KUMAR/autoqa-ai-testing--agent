@@ -4,7 +4,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 import { db } from "@/db";
 import { cookies } from "next/headers";
-import { TestCasesTable } from "@/db/schema";
+import { TestCasesTable, users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY!,
@@ -162,6 +163,18 @@ export async function POST(req: NextRequest) {
                     error: "userId, owner, repo and githubToken are required",
                 },
                 { status: 400 }
+            );
+        }
+
+        // Check user credits
+        const [user] = await db.select().from(users).where(eq(users.id, Number(userId)));
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+        if (user.credits < 200) {
+            return NextResponse.json(
+                { error: "Insufficient credits to generate test cases. Required: 200 credits." },
+                { status: 402 } // Payment Required
             );
         }
 
@@ -346,11 +359,16 @@ Important rules:
             )
             .returning();
 
+        // 6. Deduct 200 credits
+        const newCredits = user.credits - 200;
+        await db.update(users).set({ credits: newCredits }).where(eq(users.id, Number(userId)));
+
         return NextResponse.json({
             success: true,
             message: "Test cases generated successfully",
             count: insertedTestCases.length,
             testCases: insertedTestCases,
+            credits: newCredits,
         });
     } catch (error: any) {
         console.error("Generate test cases error:", error);
