@@ -31,6 +31,8 @@ import {
     ChevronUp,
 } from "lucide-react";
 import axios from "axios";
+import { UserDetailContext } from "@/context/UserDetailContext";
+import { useContext } from "react";
 
 type Props = {
     isOpen: boolean;
@@ -55,6 +57,8 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
     const [isExecuting, setIsExecuting] = useState(false);
     const [results, setResults] = useState<Record<number, RunResult>>({});
     const [selectedDetailId, setSelectedDetailId] = useState<number | null>(null);
+
+    const { userDetail, setUserDetail } = useContext(UserDetailContext);
 
     // Advanced Options states
     const [executionMode, setExecutionMode] = useState<"cache" | "generate">("cache");
@@ -136,6 +140,10 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
 
                 const data = res.data;
 
+                if (data.credits !== undefined) {
+                    setUserDetail((prev: any) => ({ ...prev, credits: data.credits }));
+                }
+
                 setResults((prev) => ({
                     ...prev,
                     [tcId]: {
@@ -150,6 +158,11 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                 }));
             } catch (err: any) {
                 const errMsg = err.response?.data?.error || err.message || "Execution failed";
+                
+                if (err.response?.data?.credits !== undefined) {
+                    setUserDetail((prev: any) => ({ ...prev, credits: err.response.data.credits }));
+                }
+
                 setResults((prev) => ({
                     ...prev,
                     [tcId]: {
