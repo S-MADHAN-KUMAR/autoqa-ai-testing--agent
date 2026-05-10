@@ -13,6 +13,7 @@ import axios from 'axios'
 import { UserDetailContext } from '@/context/UserDetailContext'
 import TestCaseList from './TestCaseList'
 import RepoSettings from './RepoSettings'
+import test from 'node:test'
 type props = {
     repoList: UserRepo[],
     setReload: () => void;
@@ -29,6 +30,8 @@ export type TestCase = {
     repoName: string;
     repoOwner: string;
     targetRoute: string;
+    status: string;
+    browserbaseScript: string;
 }
 
 type StatusData = {
@@ -74,12 +77,17 @@ function UserRepoList({ repoList, setReload }: props) {
         setTestCases([]);
         const result = await axios.get(`/api/test-cases?repoId=${repoId}`);
         console.log(result.data);
+        const userTestCases = result.data as TestCase[];
+        const passedTests = userTestCases?.filter(testCase => testCase.status == 'passed').length || 0;
+        const failedTests = userTestCases?.filter(testCase => testCase.status == 'failed').length || 0;
+        const passRate = userTestCases?.length ? Math.round((passedTests / userTestCases.length) * 100) : 0;
+
 
         setStatusData({
             totalTests: result.data.length,
-            passedTests: 0,
-            failedTests: 0,
-            passRate: 0
+            passedTests: passedTests,
+            failedTests: failedTests,
+            passRate: passRate
         })
 
         setTestCases(result.data);
@@ -153,7 +161,9 @@ function UserRepoList({ repoList, setReload }: props) {
                                 </div>
 
                                 {!testCaseLoading && testCases.length > 0
-                                    && <TestCaseList testCases={testCases} onReload={(repoId: number) => GetTestCases(repoId)} />}
+                                    && <TestCaseList testCases={testCases} onReload={(repoId: number) => GetTestCases(repoId)}
+                                        repository={repo}
+                                    />}
 
                                 {testCaseLoading ?
                                     <h2 className='flex gap-3 items-center'> <Loader2Icon className='animate-spin' /> Please Wait... </h2>

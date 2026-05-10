@@ -6,16 +6,18 @@ import { Badge } from '../ui/badge'
 import { Play, RefreshCw, Settings, SettingsIcon } from 'lucide-react'
 import { Button } from '../ui/button'
 import TestCaseSettingDialog from './TestCaseSettingDialog'
+import TestExecutionModal from './TestCaseExecutionModel'
 
 type Props = {
     testCases: TestCase[],
-    onReload: any
+    onReload: any,
+    repository: any
 }
-function TestCaseList({ testCases, onReload }: Props) {
+function TestCaseList({ testCases, onReload, repository }: Props) {
 
     const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>([]);
 
-
+    const [isModelOpen, setIsModelOpen] = useState(false);
     const handleSelectedTestCase = (checked: boolean | string, testCase: TestCase) => {
 
         if (checked) {
@@ -30,7 +32,7 @@ function TestCaseList({ testCases, onReload }: Props) {
         <div>
             <div className='flex items-center justify-between'>
                 <h2 className='font-medium text-primary'>Generated Test Cases</h2>
-                <Button size={'sm'} onClick={() => onReload(testCases[0]?.repoId)} > <RefreshCw className='h-3 w-3 mr-1' /> Refresh </Button>
+                <Button size={'sm'} onClick={() => onReload(repository?.repoId)} > <RefreshCw className='h-3 w-3 mr-1' /> Refresh </Button>
             </div>
             <div className='border rounded-md mt-3'>
                 {testCases.map((testCase, index) => (
@@ -44,19 +46,30 @@ function TestCaseList({ testCases, onReload }: Props) {
                                 <p className='text-xs text-gray-500'>{testCase?.description}</p>
                             </div>
                         </div>
-                        <div className='gap-4 flex'>
+                        <div className='gap-4 flex items-center'>
                             <Badge variant={'secondary'} >{testCase?.type}</Badge>
-                            <Badge variant={'secondary'}>Pending</Badge>
-                            <TestCaseSettingDialog testCase={testCase} setReload={onReload} />
+                            {testCase?.status == 'failed' && <Badge variant={'destructive'} className='text-red-200 font-normal'>{testCase?.status}</Badge>}
+                            {testCase?.status == 'passed' && <Badge variant={'default'} className='text-green-200 font-normal bg-green-700'>{testCase?.status}</Badge>}
+                            {testCase?.status == 'running' && <Badge variant={'default'} className='text-yellow-200 font-normal bg-yellow-700'>{testCase?.status}</Badge>}
+                            {testCase?.status == 'generated' && <Badge variant={'secondary'} >{'Pending'}</Badge>}
+
+                            <TestCaseSettingDialog testCase={testCase} setReload={() => onReload(repository?.repoId)} />
 
                         </div>
                     </div>
                 ))}
                 <div className='p-4 flex items-center justify-between bg-gray-100'>
                     <h2>Run Selected Test Case</h2>
-                    <Button disabled={selectedTestCases?.length == 0}> <Play className='h-4 w-4 mr-2' />Run Selected</Button>
+                    <Button disabled={selectedTestCases?.length == 0} onClick={() => setIsModelOpen(true)}> <Play className='h-4 w-4 mr-2' />Run Test Cases</Button>
                 </div>
             </div>
+
+            <TestExecutionModal
+                testCases={selectedTestCases}
+                repository={repository}
+                isOpen={isModelOpen}
+                onClose={() => { setIsModelOpen(false); onReload(repository?.repoId) }}
+            />
         </div>
     )
 }
