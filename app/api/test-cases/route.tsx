@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { TestCasesTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -13,8 +13,7 @@ export async function GET(req: NextRequest) {
     }
 
     const result = await db.select().from(TestCasesTable).where(
-        eq(TestCasesTable.repoId, repoId)
-    )
+        eq(TestCasesTable.repoId, repoId)).orderBy(desc(TestCasesTable?.id))
 
     return NextResponse.json(result)
 }

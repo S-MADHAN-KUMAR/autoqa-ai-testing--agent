@@ -41,8 +41,8 @@ function WorkspaceBody() {
     }, [])
 
     useEffect(() => {
-        userDetail && GetUserAddedRepoList();
-    }, [userDetail])
+        userDetail?.id && GetUserAddedRepoList();
+    }, [userDetail?.id])
 
     const GetGithubUserToken = async () => {
         const result = await axios.get('/api/github/token');
