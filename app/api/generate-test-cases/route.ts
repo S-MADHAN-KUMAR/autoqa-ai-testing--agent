@@ -272,7 +272,7 @@ Important rules:
 
         const OLLAMA_URL = "https://ollama.com/api/chat";
         const MODEL = process.env.OLLAMA_CHAT_MODEL || "gpt-oss:120b-cloud";
-        const apiKey = "dcb6386f28784b249d3b0aed4af85c24.arPmt6-vk_tjn-udI9kOQMnA";
+        const apiKey = process.env.OLLAMA_API_KEY || "";
 
         const response = await fetch(OLLAMA_URL, {
             method: "POST",
