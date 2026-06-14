@@ -47,38 +47,45 @@ function RepoSettings({ repo, setReload }: props) {
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
-            <DialogTrigger>
-                <Button> <Settings2 className='h-4 2-4 mr-1' /> Project Config</Button>
+            <DialogTrigger asChild>
+                <Button className="bg-transparent border-2 border-primary text-primary hover:bg-primary/10 font-bold uppercase tracking-wider text-xs rounded-none transition-colors">
+                    <Settings2 className='h-4 w-4 mr-1.5' /> Project Config
+                </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="bg-[#0d0d0f] border-2 border-[#1a1a1a] text-white">
                 <DialogHeader>
-                    <DialogTitle className='flex gap-2 items-center'> <Settings2 className='text-primary' /> Project/Repo Settings</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className='flex gap-2 items-center text-xl font-black uppercase text-white tracking-tight'>
+                        <Settings2 className='text-primary h-5 w-5' /> Project/Repo Settings
+                    </DialogTitle>
+                    <DialogDescription className="text-zinc-400">
                         Configure project-level defaults used during script generation and execution.
                     </DialogDescription>
                 </DialogHeader>
-                <div>
+                <div className="space-y-4 my-2">
                     <div>
-                        <label className='text-gray-500'>APP URL/DEFAULT WEBSITE</label>
+                        <label className='text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-1'>APP URL/DEFAULT WEBSITE</label>
                         <Input value={repoSettings?.targetDomain}
                             onChange={(e) => setRepoSettings({ ...repoSettings, targetDomain: e.target.value })}
-                            placeholder='App url/Domain' className='mt-1' />
-                        <p className='text-xs text-gray-400'>The target address where automated headless browsers will connect and run test cases.</p>
+                            placeholder='https://example.com' className='bg-[#09090b] border-2 border-[#1a1a1a] text-white focus:border-primary placeholder-zinc-500 mt-1' />
+                        <p className='text-xs text-zinc-500 mt-1'>The target address where automated headless browsers will connect and run test cases.</p>
                     </div>
-                    <div className='mt-4'>
-                        <label className='text-gray-500'>GLOBAL TEST INSTRUCTION</label>
+                    <div>
+                        <label className='text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-1'>GLOBAL TEST INSTRUCTION</label>
                         <Textarea value={repoSettings?.globalInstruction}
                             onChange={(e) => setRepoSettings({ ...repoSettings, globalInstruction: e.target.value })}
-
-                            placeholder='Instructions' className='mt-1' />
-                        <p className='text-xs text-gray-400'>Include any authentication credentials, cookies, setup, or teardown instructions. These are automatically appended to Gemini's prompts.</p>
+                            placeholder='e.g., Use credentials demo/demo to log in first.' className='bg-[#09090b] border-2 border-[#1a1a1a] text-white focus:border-primary placeholder-zinc-500 mt-1 min-h-[100px]' />
+                        <p className='text-xs text-zinc-500 mt-1'>Include any authentication credentials, cookies, setup, or teardown instructions. These are automatically appended to Gemini's prompts.</p>
                     </div>
                 </div>
-                <DialogFooter>
-                    <DialogClose>
-                        <Button variant={'outline'}>Cancel</Button>
+                <DialogFooter className="flex flex-row gap-3 justify-end mt-4">
+                    <DialogClose asChild>
+                        <Button variant={'outline'} className="border-2 border-[#1a1a1a] bg-transparent text-[#f5f0e8] hover:bg-[#121214] font-bold uppercase tracking-wider text-xs rounded-none">
+                            Cancel
+                        </Button>
                     </DialogClose>
-                    <Button onClick={handleSaveSettings}>Save Config</Button>
+                    <Button onClick={handleSaveSettings} className="bg-primary text-black font-bold uppercase tracking-wider text-xs border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+                        Save Config
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

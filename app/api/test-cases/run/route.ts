@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import { db } from "@/db";
 import { TestCasesTable, repositories, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { Browserbase } from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
-
-const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY!,
-});
 
 const bb = new Browserbase({
     apiKey: process.env.BROWSERBASE_API_KEY!,
@@ -78,16 +73,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Test case not found" }, { status: 404 });
         }
 
-        // Fetch user and check credits
+        // Fetch user
         const [user] = await db.select().from(users).where(eq(users.id, Number(testCase.userId)));
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
-        }
-        if (user.credits < 100) {
-            return NextResponse.json(
-                { error: "Insufficient credits to run test case. Minimum 100 required." },
-                { status: 402 }
-            );
         }
 
         // Fetch repository settings for global instructions
@@ -109,7 +98,6 @@ export async function POST(req: NextRequest) {
 
         let scriptText = testCase.browserbaseScript;
         const forceRegenerate = mode === "generate" || !scriptText;
-        let creditDeduction = 70; // Default flat rate for execution
 
         // 2. Generate script using Gemini if forced, or if no script is cached
         if (forceRegenerate) {
@@ -162,10 +150,14 @@ export async function POST(req: NextRequest) {
                 ? `\n[ADDITIONAL RUNTIME INSTRUCTIONS] (Follow strictly):\n${customPrompt}\n`
                 : "";
 
+            const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+            const cleanTargetRoute = testCase.targetRoute?.startsWith('/') ? testCase.targetRoute : '/' + (testCase.targetRoute || '');
+            const targetUrl = cleanBaseUrl + cleanTargetRoute;
+
             // Prompt Gemini for Playwright code string
             const prompt = `
 You are an expert QA automation engineer.
-Your task is to write a Playwright Node.js script body that executes a test case on an application running at URL: "${baseUrl}".
+Your task is to write a Playwright Node.js script body that executes a test case on an application running at URL: "${targetUrl}".
 
 Test Case Details:
 - Title: ${testCase.title}
@@ -198,7 +190,7 @@ function assert(condition, message) {
 Rules for your code:
 1. DO NOT import playwright, browserbase, assert, or any other modules.
 2. Navigate to the target route using: 
-   \`await page.goto('${baseUrl}${testCase.targetRoute || ""}', { waitUntil: 'load', timeout: 15000 })\`
+   \`await page.goto('${targetUrl}', { waitUntil: 'load', timeout: 15000 })\`
    followed by a short settle wait: \`await page.waitForTimeout(1000)\`.
 3. Carefully analyze the Source File Context provided to find the EXACT forms, inputs, placeholders, buttons, and elements. Look for:
    - Input names, placeholder texts, or labels (e.g. \`page.getByPlaceholder('Enter your name')\` or \`page.locator('input[name="email"]')\`).
@@ -224,17 +216,26 @@ Rules for your code:
 11. Just return the executable code.
 `;
 
-            const response = await ai.models.generateContent({
-                model: "gemini-3.1-flash-lite",
-                contents: prompt,
+            const OLLAMA_URL = "https://ollama.com/api/chat";
+            const MODEL = process.env.OLLAMA_CHAT_MODEL || "gpt-oss:120b-cloud";
+            const apiKey = "dcb6386f28784b249d3b0aed4af85c24.arPmt6-vk_tjn-udI9kOQMnA";
+
+            const response = await fetch(OLLAMA_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: MODEL,
+                    messages: [{ role: "user", content: prompt }],
+                    stream: false,
+                }),
             });
 
-            const tokensUsed = response.usageMetadata?.totalTokenCount || 0;
-            if (tokensUsed > 0) {
-                creditDeduction = Math.min(100, 70 + Math.floor(tokensUsed / 100));
-            }
+            const data = await response.json();
 
-            let generatedCode = response.text || "";
+            let generatedCode = data.message?.content || "";
             // Clean up any stray markdown wrappers just in case
             generatedCode = generatedCode.replace(/^```javascript\s*/i, "");
             generatedCode = generatedCode.replace(/^```js\s*/i, "");
@@ -326,10 +327,6 @@ Rules for your code:
                 })
                 .where(eq(TestCasesTable.id, testCase.id));
 
-            // 10. Deduct credits
-            const newCredits = user.credits - creditDeduction;
-            await db.update(users).set({ credits: newCredits }).where(eq(users.id, user.id));
-
             return NextResponse.json({
                 success: true,
                 status: "passed",
@@ -337,7 +334,6 @@ Rules for your code:
                 sessionUrl: `https://www.browserbase.com/sessions/${session.id}`,
                 logs,
                 browserbaseScript: scriptText,
-                credits: newCredits,
             });
         } catch (execError: any) {
             console.error("Script execution error:", execError);
@@ -360,10 +356,6 @@ Rules for your code:
                 })
                 .where(eq(TestCasesTable.id, testCase.id));
 
-            // 11. Deduct credits (we still charge for failed executions as resources were used)
-            const newCredits = user.credits - creditDeduction;
-            await db.update(users).set({ credits: newCredits }).where(eq(users.id, user.id));
-
             return NextResponse.json({
                 success: false,
                 status: "failed",
@@ -372,7 +364,6 @@ Rules for your code:
                 sessionUrl: session ? `https://www.browserbase.com/sessions/${session.id}` : null,
                 logs,
                 browserbaseScript: scriptText,
-                credits: newCredits,
             });
         }
     } catch (error: any) {

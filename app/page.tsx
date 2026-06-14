@@ -1,755 +1,356 @@
 "use client";
+
+import React, { useEffect } from "react";
 import Link from "next/link";
-import { useState, useEffect, useRef, ReactNode, FC } from "react";
+import { useUser, UserButton } from "@clerk/nextjs";
 
-// ─── Design Tokens ───────────────────────────────────────────────
-const C = {
-  primary: "#6d9846",
-  primaryDark: "#537832",
-  primaryLight: "#8ab85c",
-  primaryBg: "#f2f7ed",
-  primaryMid: "#d4e8c2",
-  ink: "#0d1a05",
-  inkMid: "#2d3d20",
-  muted: "#6b7a5e",
-  subtle: "#9aaa8c",
-  border: "#e2ecd8",
-  borderMid: "#cddcb8",
-  surface: "#ffffff",
-  surfaceAlt: "#f7faf4",
-  bg: "#fafdf7",
-} as const;
-
-// ─── Hooks ────────────────────────────────────────────────────────
-function useInView(threshold = 0.12): [React.RefObject<HTMLDivElement>, boolean] {
-  const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
+export default function AutoQaPage() {
+  const { isSignedIn } = useUser();
   useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setInView(true); },
-      { threshold }
-    );
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, []);
-  //@ts-ignore
-  return [ref, inView];
-}
+    const tiltCards = document.querySelectorAll<HTMLElement>('.tilt-card');
 
-function useScrollY(): number {
-  const [y, setY] = useState(0);
-  useEffect(() => {
-    const fn = () => setY(window.scrollY);
-    window.addEventListener("scroll", fn, { passive: true });
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-  return y;
-}
+    const handleMouseMove = (e: MouseEvent, card: HTMLElement) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const rotateX = (y - centerY) / 10;
+      const rotateY = (centerX - x) / 10;
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    };
 
-function useCounter(target: number, active: boolean): number {
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    const dur = 1600, fps = 60, steps = (dur / 1000) * fps;
-    let i = 0;
-    const id = setInterval(() => {
-      i++;
-      const ease = 1 - Math.pow(1 - i / steps, 3);
-      setVal(Math.round(target * ease));
-      if (i >= steps) { setVal(target); clearInterval(id); }
-    }, 1000 / fps);
-    return () => clearInterval(id);
-  }, [active, target]);
-  return val;
-}
+    const handleMouseLeave = (card: HTMLElement) => {
+      card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
+    };
 
-// ─── Components ───────────────────────────────────────────────────
+    const mouseMoveListeners = new Map();
+    const mouseLeaveListeners = new Map();
 
-interface GlowCardProps {
-  children: ReactNode;
-  accent?: string;
-  style?: React.CSSProperties;
-  className?: string;
-}
-const GlowCard: FC<GlowCardProps> = ({ children, accent = C.primary, style = {} }) => {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: C.surface,
-        border: `1px solid ${hov ? accent + "66" : C.border}`,
-        borderRadius: 16,
-        padding: "1.75rem",
-        position: "relative",
-        overflow: "hidden",
-        transition: "border-color 0.3s, box-shadow 0.3s, transform 0.25s",
-        boxShadow: hov
-          ? `0 0 0 1px ${accent}18, 0 8px 32px ${accent}14, 0 2px 8px rgba(0,0,0,0.05)`
-          : "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)",
-        transform: hov ? "translateY(-2px)" : "none",
-        ...style,
-      }}
-    >
-      {hov && (
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: 2,
-          background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-          borderRadius: "16px 16px 0 0",
-        }} />
-      )}
-      {children}
-    </div>
-  );
-};
+    tiltCards.forEach(card => {
+      const moveListener = (e: MouseEvent) => handleMouseMove(e, card);
+      const leaveListener = () => handleMouseLeave(card);
 
-interface BadgeProps { children: ReactNode }
-const GreenBadge: FC<BadgeProps> = ({ children }) => (
-  <span style={{
-    display: "inline-flex", alignItems: "center", gap: 7,
-    padding: "6px 14px 6px 10px", borderRadius: 999,
-    background: C.primaryBg, border: `1px solid ${C.primaryMid}`,
-    fontSize: 12, fontFamily: "'Geist', sans-serif", fontWeight: 500,
-    color: C.primaryDark, letterSpacing: "0.01em",
-    position: "relative", overflow: "hidden",
-  }}>
-    <span style={{
-      position: "absolute", top: 0, left: "-100%", width: "55%", height: "100%",
-      background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)",
-      animation: "shimmer 2.8s infinite",
-    }} />
-    {children}
-  </span>
-);
+      mouseMoveListeners.set(card, moveListener);
+      mouseLeaveListeners.set(card, leaveListener);
 
-interface MagicButtonProps {
-  children: ReactNode;
-  primary?: boolean;
-  onClick?: () => void;
-  style?: React.CSSProperties;
-}
-const MagicButton: FC<MagicButtonProps> = ({ children, primary = true, onClick, style = {} }) => {
-  const [hov, setHov] = useState(false);
-  return primary ? (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 14,
-        padding: "11px 24px", borderRadius: 10, border: "none", cursor: "pointer",
-        background: hov
-          ? `linear-gradient(135deg, ${C.primaryDark}, ${C.primary})`
-          : `linear-gradient(135deg, ${C.primary}, ${C.primaryLight})`,
-        color: "#fff",
-        boxShadow: hov
-          ? `0 8px 24px ${C.primary}50, 0 2px 8px ${C.primary}30`
-          : `0 4px 14px ${C.primary}38`,
-        transform: hov ? "translateY(-1px)" : "none",
-        transition: "all 0.2s ease",
-        letterSpacing: "0.01em",
-        ...style,
-      }}
-    >{children}</button>
-  ) : (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        fontFamily: "'Geist', sans-serif", fontWeight: 500, fontSize: 14,
-        padding: "10px 22px", borderRadius: 10, cursor: "pointer",
-        background: hov ? C.primaryBg : C.surface,
-        color: C.inkMid, border: `1px solid ${hov ? C.primaryMid : C.border}`,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-        transform: hov ? "translateY(-1px)" : "none",
-        transition: "all 0.2s ease",
-        letterSpacing: "0.01em",
-        ...style,
-      }}
-    >{children}</button>
-  );
-};
-
-// ─── Terminal Animation ────────────────────────────────────────────
-const TERM_LINES: { delay: number; color: string; text: string }[] = [
-  { delay: 0, color: "#9aaa8c", text: "$ autotest connect --repo github.com/acme/checkout-app" },
-  { delay: 700, color: C.primary, text: "✦ Cloning repository..." },
-  { delay: 1400, color: C.inkMid, text: "  → 3 routes detected  ·  42 components mapped" },
-  { delay: 2100, color: C.primary, text: "✦ Generating test cases with AI..." },
-  { delay: 2800, color: C.inkMid, text: "  → 214 test scenarios synthesized" },
-  { delay: 3500, color: C.primary, text: "✦ Launching Browserbase cloud runner..." },
-  { delay: 4200, color: C.inkMid, text: "  → Running 214 tests across 6 browsers" },
-  { delay: 5000, color: "#4ade80", text: "✓ 211 passed  ·  3 failed  ·  done in 38s" },
-];
-
-const TerminalMockup: FC = () => {
-  const [visible, setVisible] = useState(0);
-  const [started, setStarted] = useState(false);
-  const [ref, inView] = useInView(0.3);
-
-  useEffect(() => {
-    if (!inView || started) return;
-    setStarted(true);
-    TERM_LINES.forEach(({ delay }, i) => {
-      setTimeout(() => setVisible(v => Math.max(v, i + 1)), delay);
+      card.addEventListener('mousemove', moveListener);
+      card.addEventListener('mouseleave', leaveListener);
     });
-  }, [inView, started]);
 
-  return (
-    <div ref={ref} style={{
-      background: "#0e1a08", borderRadius: 14, overflow: "hidden",
-      border: "1px solid rgba(109,152,70,0.2)",
-      boxShadow: `0 24px 64px rgba(13,26,5,0.16), 0 4px 16px rgba(13,26,5,0.08), 0 0 0 1px ${C.primary}18`,
-    }}>
-      {/* Title bar */}
-      <div style={{
-        padding: "10px 14px", background: "#0a1205",
-        display: "flex", alignItems: "center", gap: 7,
-        borderBottom: "1px solid rgba(109,152,70,0.12)",
-      }}>
-        {["#ff5f57", "#febc2e", "#28c840"].map(c => (
-          <span key={c} style={{ width: 12, height: 12, borderRadius: "50%", background: c, display: "inline-block" }} />
-        ))}
-        <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: "#6b7a5e", marginLeft: 8 }}>
-          autotest — zsh
-        </span>
-      </div>
-      {/* Lines */}
-      <div style={{ padding: "1.25rem 1.5rem", minHeight: 220 }}>
-        {TERM_LINES.slice(0, visible).map((l, i) => (
-          <div key={i} style={{
-            fontFamily: "'Geist Mono', monospace", fontSize: 12.5,
-            color: l.color, marginBottom: 5, lineHeight: 1.65,
-            animation: "fadeUpLine 0.3s ease",
-          }}>
-            {l.text}
-          </div>
-        ))}
-        {visible < TERM_LINES.length && (
-          <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 13, color: C.primary, animation: "blink 1s steps(1) infinite" }}>▋</span>
-        )}
-      </div>
-    </div>
-  );
-};
+    const nav = document.querySelector('nav');
+    const handleScroll = () => {
+      if (!nav) return;
+      if (window.scrollY > 50) {
+        nav.classList.add('py-2');
+        nav.classList.remove('py-3');
+      } else {
+        nav.classList.add('py-3');
+        nav.classList.remove('py-2');
+      }
+    };
 
-// ─── Pipeline Diagram ─────────────────────────────────────────────
-const PIPELINE: { icon: string; label: string; sub: string }[] = [
-  { icon: "⬡", label: "GitHub Repo", sub: "Connect & clone" },
-  { icon: "✦", label: "AI Analysis", sub: "Map routes + flows" },
-  { icon: "⚙", label: "Test Generation", sub: "214 scenarios" },
-  { icon: "☁", label: "Browserbase", sub: "Cloud execution" },
-  { icon: "✓", label: "Results", sub: "Report + video" },
-];
+    window.addEventListener('scroll', handleScroll);
 
-const PipelineViz: FC = () => {
-  const [ref, inView] = useInView(0.2);
-  return (
-    <div ref={ref} style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto", paddingBottom: 8 }}>
-      {PIPELINE.map((p, i) => (
-        <div key={p.label} style={{ display: "flex", alignItems: "center", flex: i < PIPELINE.length - 1 ? "1 0 auto" : "0 0 auto" }}>
-          <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-            minWidth: 96,
-            opacity: inView ? 1 : 0,
-            transform: inView ? "none" : "translateY(16px)",
-            transition: `opacity 0.5s ease ${i * 0.1}s, transform 0.5s ease ${i * 0.1}s`,
-          }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: 14,
-              background: i === 0 ? C.inkMid : i === PIPELINE.length - 1 ? C.primary : C.primaryBg,
-              border: `1px solid ${i === 0 ? "transparent" : i === PIPELINE.length - 1 ? "transparent" : C.primaryMid}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 22, color: i === 0 || i === PIPELINE.length - 1 ? "#fff" : C.primary,
-              boxShadow: i === PIPELINE.length - 1 ? `0 4px 16px ${C.primary}44` : "none",
-            }}>
-              {p.icon}
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 12, color: C.inkMid }}>{p.label}</div>
-              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: C.subtle, marginTop: 2 }}>{p.sub}</div>
-            </div>
-          </div>
-          {i < PIPELINE.length - 1 && (
-            <div style={{
-              flex: 1, height: 1, minWidth: 20,
-              background: `linear-gradient(90deg, ${C.primaryMid}, ${C.primaryMid})`,
-              margin: "0 4px", marginBottom: 28,
-              opacity: inView ? 1 : 0,
-              transition: `opacity 0.4s ease ${(i + 0.5) * 0.1}s`,
-              position: "relative",
-            }}>
-              <div style={{
-                position: "absolute", right: -4, top: "50%", transform: "translateY(-50%)",
-                width: 8, height: 8, borderRadius: "50%", background: C.primaryMid,
-              }} />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// ─── Stat Counter Cell ────────────────────────────────────────────
-interface StatProps { target: number; suffix: string; label: string; active: boolean }
-const StatCell: FC<StatProps> = ({ target, suffix, label, active }) => {
-  const val = useCounter(target, active);
-  return (
-    <div style={{ textAlign: "center", padding: "2rem 1.5rem" }}>
-      <div style={{
-        fontFamily: "'Instrument Serif', serif",
-        fontSize: "clamp(2.2rem, 5vw, 3.2rem)",
-        color: C.primary, lineHeight: 1, marginBottom: 8,
-      }}>
-        {val.toLocaleString()}{suffix}
-      </div>
-      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.muted }}>{label}</div>
-    </div>
-  );
-};
-
-// ─── Features Data ────────────────────────────────────────────────
-interface Feature { icon: string; label: string; body: string; accent: string }
-const FEATURES: Feature[] = [
-  { icon: "⬡", label: "GitHub Integration", body: "Connect any public or private repo in one click. We clone, analyze your routes, components, and user flows automatically.", accent: C.primary },
-  { icon: "✦", label: "AI Test Generation", body: "Our model reads your codebase and synthesizes exhaustive test scenarios — edge cases included — in plain English first.", accent: "#2e7d32" },
-  { icon: "☁", label: "Browserbase Execution", body: "Tests run in real cloud browsers via Browserbase. Chrome, Firefox, WebKit — all viewports, zero infrastructure.", accent: "#558b2f" },
-  { icon: "🎬", label: "Session Recordings", body: "Every run is recorded. Replay failing tests frame-by-frame to instantly understand what broke and where.", accent: "#33691e" },
-  { icon: "🔁", label: "Auto-Healing Tests", body: "When your UI shifts, selectors adapt automatically. No more maintaining brittle XPath strings by hand.", accent: C.primaryDark },
-  { icon: "📊", label: "Actionable Reports", body: "Rich diffs, traces, root-cause explanations, and suggested code fixes — not just a pass/fail count.", accent: "#1b5e20" },
-];
-
-// ─── Steps Data ───────────────────────────────────────────────────
-interface Step { n: string; icon: string; title: string; desc: string }
-const STEPS: Step[] = [
-  { n: "01", icon: "⬡", title: "Connect your GitHub repo", desc: "Authorize GitHub and select a repository. AutoTest reads your branch, pulls the code, and begins mapping your application structure." },
-  { n: "02", icon: "✦", title: "AI generates test cases", desc: "Our model analyzes routes, components, and user flows. It outputs a full test suite — E2E journeys, edge cases, and regression checks." },
-  { n: "03", icon: "☁", title: "Browserbase runs the tests", desc: "Tests execute in real browsers on Browserbase's cloud grid. Parallel runs, multiple viewports, full session recordings included." },
-  { n: "04", icon: "✓", title: "Review results & iterate", desc: "Get a structured report with pass/fail status, video replays, diffs, and AI-generated fix suggestions. Ship with confidence." },
-];
-
-const LOGOS = ["Vercel", "Stripe", "Linear", "Resend", "PlanetScale", "Loom", "Notion", "Figma"];
-
-// ─── Marquee ──────────────────────────────────────────────────────
-const Marquee: FC<{ items: string[] }> = ({ items }) => (
-  <div style={{ overflow: "hidden", width: "100%", position: "relative" }}>
-    <div style={{ display: "flex", gap: 56, animation: "marquee 24s linear infinite", width: "max-content" }}>
-      {[...items, ...items].map((item, i) => (
-        <span key={i} style={{
-          fontFamily: "'Geist', sans-serif", fontSize: 14, fontWeight: 500,
-          color: C.subtle, whiteSpace: "nowrap", letterSpacing: "0.01em",
-        }}>{item}</span>
-      ))}
-    </div>
-  </div>
-);
-
-// ─── Dot Grid Background ──────────────────────────────────────────
-const DotGrid: FC = () => (
-  <div style={{
-    position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
-    backgroundImage: `radial-gradient(circle, ${C.primaryMid} 1px, transparent 1px)`,
-    backgroundSize: "28px 28px",
-    maskImage: "radial-gradient(ellipse 75% 55% at 50% 0%, black 0%, transparent 100%)",
-  }} />
-);
-
-// ─── Orbs ─────────────────────────────────────────────────────────
-const Orbs: FC = () => (
-  <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-    <div style={{ position: "absolute", top: "-8%", right: "-6%", width: 560, height: 560, borderRadius: "50%", background: `radial-gradient(circle, ${C.primary}14 0%, transparent 70%)` }} />
-    <div style={{ position: "absolute", top: "40%", left: "-6%", width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, ${C.primaryLight}0e 0%, transparent 70%)` }} />
-    <div style={{ position: "absolute", bottom: "8%", right: "20%", width: 280, height: 280, borderRadius: "50%", background: `radial-gradient(circle, ${C.primaryDark}0a 0%, transparent 70%)` }} />
-  </div>
-);
-
-// ═══════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════
-const AutoTestLanding: FC = () => {
-  const scrollY = useScrollY();
-  const [heroRef, heroIn] = useInView(0.05);
-  const [featRef, featIn] = useInView(0.1);
-  const [stepsRef, stepsIn] = useInView(0.1);
-  const [statsRef, statsIn] = useInView(0.3);
-  const scrolled = scrollY > 30;
-
-  const anim = (inView: boolean, delay = 0, from = "translateY(20px)"): React.CSSProperties => ({
-    opacity: inView ? 1 : 0,
-    transform: inView ? "none" : from,
-    transition: `opacity 0.65s ease ${delay}s, transform 0.65s ease ${delay}s`,
-  });
+    return () => {
+      tiltCards.forEach(card => {
+        card.removeEventListener('mousemove', mouseMoveListeners.get(card));
+        card.removeEventListener('mouseleave', mouseLeaveListeners.get(card));
+      });
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
-      <style>{`
-        @keyframes shimmer    { 0%{left:-100%} 100%{left:200%} }
-        @keyframes fadeUpLine { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
-        @keyframes blink      { 0%,100%{opacity:1} 50%{opacity:0} }
-        @keyframes marquee    { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-        @keyframes float      { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::selection { background: ${C.primaryMid}; color: ${C.primaryDark}; }
-        html { scroll-behavior: smooth; }
-      `}</style>
+      <div className="fixed inset-0 z-[-1] opacity-40"></div>
 
-      <div style={{ fontFamily: "'Geist', sans-serif", background: C.bg, color: C.ink, minHeight: "100vh" }}>
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-2 bg-surface/80 backdrop-blur-md dark:bg-surface/80 rounded-full mt-3 mx-auto max-w-6xl w-[95%] border-2 border-primary dark:border-outline-variant shadow-[4px_4px_0px_0px_rgba(26,26,26,1)] transition-all duration-300">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <img alt="AutoQa Logo" className="w-8 h-8 object-contain" src="/logo.png" />
+          <span className="font-headline text-lg font-black tracking-tighter text-primary dark:text-primary-fixed uppercase">AutoQa</span>
+        </div>
 
-        {/* ── NAV ── */}
-        <header style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-          background: scrolled ? "rgba(247,250,244,0.88)" : "transparent",
-          backdropFilter: scrolled ? "blur(18px) saturate(180%)" : "none",
-          borderBottom: scrolled ? `1px solid ${C.border}` : "none",
-          transition: "all 0.4s ease",
-        }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2rem" }}>
-            {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 9,
-                background: `linear-gradient(135deg, ${C.primaryDark}, ${C.primary})`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 16, boxShadow: `0 4px 12px ${C.primary}44`,
-              }}>⚡</div>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 16, letterSpacing: "-0.02em", color: C.ink }}>AutoTest</span>
-              <span style={{
-                fontFamily: "'Geist Mono', monospace", fontSize: 10, fontWeight: 500,
-                color: C.primary, background: C.primaryBg, border: `1px solid ${C.primaryMid}`,
-                borderRadius: 6, padding: "2px 7px", letterSpacing: "0.04em",
-              }}>AI</span>
-            </div>
-
-            {/* Nav links */}
-            <nav style={{ display: "flex", gap: 2 }}>
-              {(["Features", "How it works", "Docs"] as string[]).map(l => (
-                <a key={l} href={`#${l.toLowerCase().replace(/\s+/g, "-")}`}
-                  style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.muted, textDecoration: "none", padding: "6px 14px", borderRadius: 8, transition: "color 0.2s, background 0.2s" }}
-                  onMouseEnter={e => { (e.target as HTMLElement).style.color = C.ink; (e.target as HTMLElement).style.background = C.primaryBg; }}
-                  onMouseLeave={e => { (e.target as HTMLElement).style.color = C.muted; (e.target as HTMLElement).style.background = "transparent"; }}
-                >{l}</a>
-              ))}
-            </nav>
-
-            {/* CTA */}
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <Link href={'/workspace'}>
-                <button style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.muted, background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px" }}>Sign in</button>
-                <MagicButton>Connect GitHub →</MagicButton>
+        {/* Auth Buttons */}
+        <div className="flex items-center gap-3">
+          {isSignedIn ? (
+            <>
+              {/* Workspace button */}
+              <Link
+                href="/workspace"
+                className="px-4 py-1.5 bg-transparent border-2 border-primary text-primary font-bold uppercase tracking-widest text-xs hover:bg-primary-container transition-all duration-100 active:translate-y-0.5"
+              >
+                Workspace
               </Link>
+              {/* Clerk profile button — avatar, manage account, sign out */}
+              <UserButton afterSignOutUrl="/" />
+            </>
+          ) : (
+            <>
+              {/* Connect GitHub */}
+              <button className="flex items-center gap-1.5 px-4 py-1.5 bg-transparent border-2 border-primary text-primary font-bold uppercase tracking-widest text-xs hover:bg-primary-container transition-all duration-100 active:translate-y-0.5">
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                Connect GitHub
+              </button>
+              {/* Sign In */}
+              <Link
+                href="/sign-in"
+                className="px-4 py-1.5 bg-primary text-white font-bold uppercase tracking-widest text-xs shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+              >
+                Sign In
+              </Link>
+            </>
+          )}
+        </div>
+      </nav>
+
+      <section className="relative min-h-screen pt-20 pb-14 px-6 flex flex-col items-center justify-center overflow-hidden">
+        <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          <div className="z-10">
+            <div className="inline-block px-3 py-0.5 bg-primary text-white font-black uppercase tracking-tighter text-xs mb-4">
+              Autonomous Testing v2.0
             </div>
-          </div>
-        </header>
-
-        {/* ── HERO ── */}
-        <section ref={heroRef} style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "7rem 2rem 4rem", position: "relative", overflow: "hidden" }}>
-          <DotGrid />
-          <Orbs />
-
-          <div style={{ position: "relative", zIndex: 1, maxWidth: 820, margin: "0 auto" }}>
-            {/* Badge */}
-            <div style={{ marginBottom: 24, ...anim(heroIn, 0) }}>
-              <GreenBadge>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.primary, display: "inline-block", animation: "blink 1.6s infinite" }} />
-                Powered by AI + Browserbase — now in beta
-              </GreenBadge>
-            </div>
-
-            {/* H1 */}
-            <h1 style={{
-              fontFamily: "'Instrument Serif', serif",
-              fontSize: "clamp(3rem, 7.5vw, 6.5rem)",
-              lineHeight: 1.02, letterSpacing: "-0.035em",
-              color: C.ink, marginBottom: "1.4rem",
-              ...anim(heroIn, 0.1),
-            }}>
-              Connect repo.<br />
-              <span style={{
-                background: `linear-gradient(135deg, ${C.primaryDark} 0%, ${C.primary} 50%, ${C.primaryLight} 100%)`,
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-              }}>AI tests it.</span>
+            <h1 className="text-5xl md:text-7xl font-black leading-none tracking-tighter uppercase mb-6 metallic-text">
+              Ship Code <br />With <br />Confidence
             </h1>
-
-            {/* Sub */}
-            <p style={{
-              fontSize: "clamp(1rem, 1.8vw, 1.2rem)", color: C.muted, lineHeight: 1.7,
-              maxWidth: 560, margin: "0 auto 2.5rem",
-              ...anim(heroIn, 0.2),
-            }}>
-              Connect your GitHub repository, let our AI generate a complete test suite, and watch Browserbase execute them across real cloud browsers — all in minutes.
+            <p className="text-base font-medium text-on-surface-variant/80 max-w-xl mb-8 border-l-4 border-primary pl-4">
+              The world&apos;s first AI-native testing agent that writes, executes, and auto-heals E2E tests in real-time. No more flaky CI/CD.
             </p>
-
-            {/* CTAs */}
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: "3rem", ...anim(heroIn, 0.3) }}>
-              <MagicButton>⬡ Connect GitHub repo →</MagicButton>
-              <MagicButton primary={false}>▶ Watch 2-min demo</MagicButton>
-            </div>
-
-            {/* Trust chips */}
-            <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", ...anim(heroIn, 0.4) }}>
-              {["No credit card required", "Works with any Next.js / React app", "Browserbase cloud included"].map(t => (
-                <span key={t} style={{ fontFamily: "'Geist', sans-serif", fontSize: 12.5, color: C.subtle, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: C.primary, fontWeight: 700 }}>✓</span> {t}
-                </span>
-              ))}
+            <div className="flex flex-wrap gap-4">
+              <button className="px-7 py-3 bg-primary-container text-primary font-black uppercase text-base neo-brutalist-border neo-brutalist-shadow transition-all active:translate-y-1 active:translate-x-1 active:shadow-none">
+                Connect GitHub Repo
+              </button>
+              <button className="px-7 py-3 bg-white text-primary font-black uppercase text-base border-2 border-primary hover:bg-surface-container transition-all">
+                View Demo
+              </button>
             </div>
           </div>
-
-          {/* Terminal */}
-          <div style={{
-            maxWidth: 700, width: "100%", margin: "4rem auto 0",
-            position: "relative", zIndex: 1,
-            animation: heroIn ? "float 5s ease-in-out infinite" : "none",
-            ...anim(heroIn, 0.55),
-          }}>
-            <div style={{ position: "absolute", inset: -1, borderRadius: 16, background: `linear-gradient(135deg, ${C.primary}44, ${C.primaryLight}22)`, filter: "blur(20px)", zIndex: -1 }} />
-            <TerminalMockup />
-          </div>
-        </section>
-
-        {/* ── PIPELINE ── */}
-        <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "3.5rem 2rem" }}>
-          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-            <p style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: C.subtle, textAlign: "center", marginBottom: "2.5rem" }}>How it flows</p>
-            <PipelineViz />
-          </div>
-        </section>
-
-        {/* ── MARQUEE ── */}
-        <div style={{ background: C.surfaceAlt, borderBottom: `1px solid ${C.border}`, padding: "1.25rem 0" }}>
-          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.border, textAlign: "center", marginBottom: "1rem" }}>Trusted by teams building on</p>
-          <Marquee items={LOGOS} />
-        </div>
-
-        {/* ── STATS ── */}
-        <div ref={statsRef} style={{ maxWidth: 1200, margin: "0 auto", padding: "4rem 2rem 3rem" }}>
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, overflow: "hidden",
-            boxShadow: "0 2px 12px rgba(13,26,5,0.05)",
-            gap: 0,
-          }}>
-            {([
-              { target: 99, suffix: "%", label: "Test accuracy rate" },
-              { target: 214, suffix: "+", label: "Avg scenarios generated" },
-              { target: 2400, suffix: "+", label: "Repos connected" },
-              { target: 38, suffix: "s", label: "Avg full suite runtime" },
-            ] as { target: number; suffix: string; label: string }[]).map((s, i) => (
-              <div key={s.label} style={{ borderRight: i < 3 ? `1px solid ${C.border}` : "none" }}>
-                <StatCell {...s} active={statsIn} />
-              </div>
-            ))}
+          <div className="relative w-full aspect-square lg:aspect-video flex items-center justify-center">
+            <div className="w-full h-full glass-panel neo-brutalist-border neo-brutalist-shadow rotate-3 scale-95 hover:rotate-0 transition-transform duration-700 tilt-card">
+              <img src="https://i.pinimg.com/originals/c5/6c/97/c56c9756a71f917b5fd1c65f3f95d198.gif" className="w-full h-full object-cover" alt="Demo" />
+            </div>
+            <div className="absolute -top-3 -right-3 px-4 py-2 text-sm bg-[#7c3aed] text-white font-bold neo-brutalist-border neo-brutalist-shadow -rotate-6">99.9% Coverage</div>
+            <div className="absolute -bottom-3 -left-3 px-4 py-2 text-sm bg-[#06b6d4] text-white font-bold neo-brutalist-border neo-brutalist-shadow rotate-6">Auto-Healed</div>
           </div>
         </div>
+      </section>
 
-        {/* ── FEATURES ── */}
-        <section id="features" ref={featRef} style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 2rem 5rem" }}>
-          <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
-            <GreenBadge>Capabilities</GreenBadge>
-            <h2 style={{
-              fontFamily: "'Instrument Serif', serif",
-              fontSize: "clamp(2rem, 4vw, 3rem)", letterSpacing: "-0.03em",
-              color: C.ink, marginTop: 16, lineHeight: 1.1,
-            }}>
-              Everything in one pipeline
-            </h2>
-            <p style={{ fontSize: 15, color: C.muted, marginTop: 12, maxWidth: 480, margin: "12px auto 0", lineHeight: 1.65 }}>
-              From your first commit to a passing test suite — no DevOps, no config, no brittle scripts.
-            </p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
-            {FEATURES.map((f, i) => (
-              <GlowCard key={f.label} accent={f.accent} style={{
-                ...anim(featIn, i * 0.08),
-              }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: 12, marginBottom: 16,
-                  background: C.primaryBg, border: `1px solid ${C.primaryMid}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 20, color: f.accent,
-                }}>
-                  {f.icon}
-                </div>
-                <h3 style={{ fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 15.5, color: C.ink, marginBottom: 8 }}>{f.label}</h3>
-                <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13.5, color: C.muted, lineHeight: 1.65 }}>{f.body}</p>
-              </GlowCard>
-            ))}
-          </div>
-        </section>
-
-        {/* ── HOW IT WORKS ── */}
-        <section id="how-it-works" ref={stepsRef} style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "5rem 2rem" }}>
-          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
-              <GreenBadge>Process</GreenBadge>
-              <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: "clamp(2rem, 4vw, 3rem)", letterSpacing: "-0.03em", color: C.ink, marginTop: 16, lineHeight: 1.1 }}>
-                Zero to tested in four steps
-              </h2>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-              {STEPS.map((s, i) => (
-                <div key={s.n} style={anim(stepsIn, i * 0.12)}>
-                  <GlowCard accent={C.primary} style={{ height: "100%" }}>
-                    {/* Step number + icon */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                      <span style={{
-                        fontFamily: "'Geist Mono', monospace", fontSize: 11, fontWeight: 600,
-                        color: C.primary, background: C.primaryBg, border: `1px solid ${C.primaryMid}`,
-                        borderRadius: 6, padding: "3px 8px", letterSpacing: "0.06em",
-                      }}>{s.n}</span>
-                      <span style={{
-                        width: 36, height: 36, borderRadius: 10,
-                        background: C.primaryBg, border: `1px solid ${C.primaryMid}`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 17, color: C.primary,
-                      }}>{s.icon}</span>
-                    </div>
-                    <h3 style={{ fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 15.5, color: C.ink, marginBottom: 10, lineHeight: 1.3 }}>{s.title}</h3>
-                    <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13.5, color: C.muted, lineHeight: 1.65 }}>{s.desc}</p>
-                  </GlowCard>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── BROWSERBASE CALLOUT ── */}
-        <section style={{ maxWidth: 1100, margin: "0 auto", padding: "5rem 2rem" }}>
-          <div style={{
-            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20,
-            padding: "3rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3rem",
-            alignItems: "center", boxShadow: "0 4px 24px rgba(13,26,5,0.06)",
-          }}>
+      <section className="py-16 px-6 bg-surface-container/10 border-y-4 border-primary">
+        <div className="max-w-6xl mx-auto">
+          {/* Section header */}
+          <div className="flex flex-col md:flex-row justify-between items-end mb-14 gap-6">
             <div>
-              <GreenBadge>Powered by Browserbase</GreenBadge>
-              <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", color: C.ink, marginTop: 16, marginBottom: 14, lineHeight: 1.15, letterSpacing: "-0.025em" }}>
-                Real browsers.<br />Zero infrastructure.
-              </h3>
-              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 14.5, color: C.muted, lineHeight: 1.7, marginBottom: 24 }}>
-                We use Browserbase to spin up headless Chrome, Firefox, and WebKit instances in the cloud. Your tests run in authentic browser environments — no Selenium grids to manage, no Docker to configure.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {[
-                  "Parallel execution across 6 browser types",
-                  "Full session replay with video + network trace",
-                  "Real device emulation & geolocation testing",
-                  "Automatic screenshots on failure",
-                ].map(item => (
-                  <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontFamily: "'Geist', sans-serif", fontSize: 13.5, color: C.inkMid }}>
-                    <span style={{ width: 20, height: 20, borderRadius: "50%", background: C.primaryBg, border: `1px solid ${C.primaryMid}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.primary, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>
-                    {item}
-                  </div>
-                ))}
+              <h2 className="text-3xl font-black uppercase tracking-tighter mb-3">The Pipeline</h2>
+              <p className="text-on-surface-variant/70 text-sm uppercase font-bold tracking-widest">End-to-end automated orchestration</p>
+            </div>
+            <div className="text-right">
+              <span className="text-6xl font-black text-primary/10">01</span>
+            </div>
+          </div>
+
+          {/* HOW IT FLOWS label */}
+          <p className="text-center text-xs font-bold uppercase tracking-[0.3em] text-on-surface-variant/50 mb-10">How It Flows</p>
+
+          {/* 5-step flow */}
+          <div className="flex items-start justify-between gap-0">
+
+            {/* Step 1 — GitHub Repo */}
+            <div className="flex flex-col items-center text-center flex-1">
+              <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center neo-brutalist-border neo-brutalist-shadow mb-4 group-hover:-translate-y-1 transition-transform">
+                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+              </div>
+              <h3 className="font-black uppercase text-sm mb-1">GitHub Repo</h3>
+              <p className="text-xs text-on-surface-variant/60">Connect &amp; clone</p>
+            </div>
+
+            {/* Connector 1 */}
+            <div className="flex items-center mt-8 flex-1 min-w-0 px-2">
+              <div className="w-full flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-primary/40 shrink-0"></div>
+                <div className="flex-1 border-t-2 border-dashed border-primary/30 relative">
+                  <div className="absolute inset-0 border-t-2 border-dashed border-primary w-1/2 animate-[pulse_2s_ease-in-out_infinite]"></div>
+                </div>
+                <div className="w-2 h-2 rounded-full bg-primary/40 shrink-0"></div>
               </div>
             </div>
 
-            {/* Mini metrics panel */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {[
-                { label: "checkout flow", passed: 48, failed: 2, pct: 96 },
-                { label: "auth routes", passed: 31, failed: 0, pct: 100 },
-                { label: "product pages", passed: 62, failed: 5, pct: 93 },
-                { label: "cart & payment", passed: 29, failed: 1, pct: 97 },
-              ].map(r => (
-                <div key={r.label} style={{
-                  background: C.surfaceAlt, border: `1px solid ${C.border}`,
-                  borderRadius: 12, padding: "1rem 1.25rem",
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 12, color: C.inkMid }}>{r.label}</span>
-                    <div style={{ display: "flex", gap: 8, fontSize: 12, fontFamily: "'Geist', sans-serif" }}>
-                      <span style={{ color: C.primary, fontWeight: 600 }}>✓ {r.passed}</span>
-                      {r.failed > 0 && <span style={{ color: "#d32f2f", fontWeight: 600 }}>✗ {r.failed}</span>}
-                    </div>
+            {/* Step 2 — AI Analysis */}
+            <div className="flex flex-col items-center text-center flex-1">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                </svg>
+              </div>
+              <h3 className="font-black uppercase text-sm mb-1">AI Analysis</h3>
+              <p className="text-xs text-on-surface-variant/60">Map routes + flows</p>
+            </div>
+
+            {/* Connector 2 */}
+            <div className="flex items-center mt-8 flex-1 min-w-0 px-2">
+              <div className="w-full flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-primary/40 shrink-0"></div>
+                <div className="flex-1 border-t-2 border-dashed border-primary/30"></div>
+                <div className="w-2 h-2 rounded-full bg-primary/40 shrink-0"></div>
+              </div>
+            </div>
+
+            {/* Step 3 — Test Generation */}
+            <div className="flex flex-col items-center text-center flex-1">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <h3 className="font-black uppercase text-sm mb-1">Test Generation</h3>
+              <p className="text-xs text-on-surface-variant/60">214 scenarios</p>
+            </div>
+
+            {/* Connector 3 */}
+            <div className="flex items-center mt-8 flex-1 min-w-0 px-2">
+              <div className="w-full flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-primary/40 shrink-0"></div>
+                <div className="flex-1 border-t-2 border-dashed border-primary/30"></div>
+                <div className="w-2 h-2 rounded-full bg-primary/40 shrink-0"></div>
+              </div>
+            </div>
+
+            {/* Step 4 — Browserbase */}
+            <div className="flex flex-col items-center text-center flex-1">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
+                </svg>
+              </div>
+              <h3 className="font-black uppercase text-sm mb-1">Browserbase</h3>
+              <p className="text-xs text-on-surface-variant/60">Cloud execution</p>
+            </div>
+
+            {/* Connector 4 */}
+            <div className="flex items-center mt-8 flex-1 min-w-0 px-2">
+              <div className="w-full flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-primary/40 shrink-0"></div>
+                <div className="flex-1 border-t-2 border-dashed border-primary/30"></div>
+                <div className="w-2 h-2 rounded-full bg-primary/40 shrink-0"></div>
+              </div>
+            </div>
+
+            {/* Step 5 — Results */}
+            <div className="flex flex-col items-center text-center flex-1">
+              <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center neo-brutalist-border neo-brutalist-shadow mb-4">
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                </svg>
+              </div>
+              <h3 className="font-black uppercase text-sm mb-1">Results</h3>
+              <p className="text-xs text-on-surface-variant/60">Report + video</p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+
+      <section className="py-16 px-6">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-4xl font-black uppercase tracking-tighter mb-10 text-center">Autonomous Features</h2>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <div className="md:col-span-8 group p-1 bg-white neo-brutalist-border neo-brutalist-shadow transition-all hover:scale-[1.01]">
+              <div className="relative h-full p-6 overflow-hidden bg-white text-primary">
+                <div className="flex justify-between items-start mb-8">
+                  <h3 className="text-2xl font-black uppercase leading-tight">AI Test<br />Generation</h3>
+                  <span className="material-symbols-outlined text-4xl">model_training</span>
+                </div>
+                <p className="text-base font-medium mb-6 max-w-md">Our LLM agents browse your application like a human, understanding context and edge cases to build comprehensive test suites in minutes, not weeks.</p>
+                <div className="h-36 w-full bg-on-secondary/5 neo-brutalist-border p-3 font-mono text-sm">
+                  <div className="flex gap-2 mb-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
                   </div>
-                  <div style={{ background: C.border, borderRadius: 99, height: 5, overflow: "hidden" }}>
-                    <div style={{ width: `${r.pct}%`, height: "100%", background: r.pct === 100 ? C.primary : `linear-gradient(90deg, ${C.primary}, ${C.primaryLight})`, borderRadius: 99, transition: "width 1s ease" }} />
+                  <code className="text-primary/70 text-xs">
+                    <span className="text-[#7c3aed]">await</span> page.goto(&apos;<span className="text-[#06b6d4]">/checkout</span>&apos;);<br />
+                    <span className="text-[#7c3aed]">await</span> page.getByRole(&apos;<span className="text-[#06b6d4]">button</span>&apos;).click();<br />
+                    <span className="text-green-600">// Auto-generated by AutoQa</span>
+                  </code>
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-4 p-1 bg-primary text-white neo-brutalist-border neo-brutalist-shadow">
+              <div className="h-full p-6 flex flex-col justify-between">
+                <div>
+                  <span className="material-symbols-outlined text-4xl mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>healing</span>
+                  <h3 className="text-2xl font-black uppercase leading-tight mb-3">Auto-Healing</h3>
+                  <p className="font-medium opacity-80 text-sm">CSS selectors changed? No problem. AutoQa identifies UI updates and patches tests automatically.</p>
+                </div>
+                <div className="mt-6 pt-6 border-t border-white/20">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase tracking-widest">Stability Index</span>
+                    <span className="text-xl font-black">99.2%</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── CTA ── */}
-        <section style={{ padding: "1rem 2rem 6rem" }}>
-          <div style={{
-            maxWidth: 900, margin: "0 auto", position: "relative",
-            background: `linear-gradient(145deg, ${C.primaryDark}, ${C.primary})`,
-            borderRadius: 24, padding: "4.5rem 3rem", textAlign: "center",
-            boxShadow: `0 32px 80px ${C.primary}30, 0 8px 24px ${C.primary}20`,
-            overflow: "hidden",
-          }}>
-            <div style={{ position: "absolute", top: "-25%", right: "-8%", width: 360, height: 360, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
-            <div style={{ position: "absolute", bottom: "-20%", left: "-4%", width: 280, height: 280, borderRadius: "50%", background: "rgba(255,255,255,0.04)", pointerEvents: "none" }} />
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ marginBottom: 20 }}>
-                <span style={{ background: "rgba(255,255,255,0.15)", borderRadius: 999, padding: "5px 14px", fontSize: 12, fontFamily: "'Geist', sans-serif", fontWeight: 500, color: "rgba(255,255,255,0.9)", letterSpacing: "0.04em" }}>
-                  ⚡ Ready when you are
-                </span>
               </div>
-              <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: "clamp(2rem, 5vw, 3.4rem)", color: "#fff", marginBottom: 16, letterSpacing: "-0.03em", lineHeight: 1.08 }}>
-                Ship with confidence.<br />
-                <em>Always.</em>
-              </h2>
-              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 15.5, color: "rgba(255,255,255,0.72)", maxWidth: 460, margin: "0 auto 2.5rem", lineHeight: 1.65 }}>
-                Connect your GitHub repo and have a full AI-generated test suite running in Browserbase within minutes.
-              </p>
-              <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                <button style={{
-                  fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 14,
-                  padding: "13px 28px", borderRadius: 10, border: "none", cursor: "pointer",
-                  background: "#fff", color: C.primaryDark,
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.2)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "none"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(0,0,0,0.15)"; }}
-                >⬡ Connect GitHub →</button>
-                <button style={{
-                  fontFamily: "'Geist', sans-serif", fontWeight: 500, fontSize: 14,
-                  padding: "13px 28px", borderRadius: 10, cursor: "pointer",
-                  background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)",
-                  color: "#fff", backdropFilter: "blur(8px)",
-                  transition: "background 0.2s",
-                }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.2)"}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)"}
-                >Read the docs</button>
+            </div>
+
+            <div className="md:col-span-4 p-6 glass-panel neo-brutalist-border neo-brutalist-shadow transition-all hover:bg-white/10">
+              <h3 className="text-xl font-black uppercase mb-3">Actionable Reports</h3>
+              <p className="mb-6 opacity-70 text-sm">Rich traces, video recordings, and step-by-step logs for every single test execution.</p>
+              <div className="space-y-2">
+                <div className="h-1.5 bg-green-500 w-full"></div>
+                <div className="h-1.5 bg-green-500 w-4/5"></div>
+                <div className="h-1.5 bg-red-500 w-1/3"></div>
+                <div className="h-1.5 bg-green-500 w-full"></div>
+              </div>
+            </div>
+
+            <div className="md:col-span-8 p-1 bg-primary-container text-primary neo-brutalist-border neo-brutalist-shadow">
+              <div className="h-full p-6 flex items-center gap-6">
+                <div className="flex-1">
+                  <h3 className="text-2xl font-black uppercase mb-3">Native CI Integration</h3>
+                  <p className="font-medium text-sm">Seamlessly plug into GitHub Actions, GitLab CI, or Jenkins. Blocks merges on failure with rich PR comments.</p>
+                </div>
+              
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── FOOTER ── */}
-        <footer style={{ borderTop: `1px solid ${C.border}`, padding: "2.5rem 2rem", background: C.surface }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${C.primaryDark}, ${C.primary})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>⚡</div>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>AutoTest AI</span>
-            </div>
-            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.subtle }}>
-              © {new Date().getFullYear()} AutoTest AI. All rights reserved.
-            </span>
-            <div style={{ display: "flex", gap: 24 }}>
-              {(["Terms", "Privacy", "Contact", "Docs"] as string[]).map(l => (
-                <a key={l} href="#" style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.subtle, textDecoration: "none", transition: "color 0.2s" }}
-                  onMouseEnter={e => (e.target as HTMLElement).style.color = C.ink}
-                  onMouseLeave={e => (e.target as HTMLElement).style.color = C.subtle}
-                >{l}</a>
-              ))}
-            </div>
-          </div>
-        </footer>
-      </div>
+      <footer className="w-full border-t-4 border-primary mt-14 bg-surface dark:bg-surface grid grid-cols-1 md:grid-cols-4 gap-6 px-8 py-10 max-w-full">
+        <div className="md:col-span-1">
+          <h2 className="text-2xl font-display font-black text-primary uppercase mb-3">AutoQa</h2>
+          <p className="font-body text-xs font-medium uppercase text-on-surface-variant/70 leading-relaxed">
+            © 2024 AUTOQA AI. FORM FOLLOWS FUNCTION.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-headline font-black uppercase text-primary mb-4 text-sm">Product</h4>
+          <ul className="space-y-3">
+            <li><a className="font-body text-xs font-medium uppercase text-primary dark:text-primary-fixed hover:text-secondary transition-colors duration-75" href="#">API Reference</a></li>
+            <li><a className="font-body text-xs font-medium uppercase text-primary dark:text-primary-fixed hover:text-secondary transition-colors duration-75" href="#">Changelog</a></li>
+            <li><a className="font-body text-xs font-medium uppercase text-primary dark:text-primary-fixed hover:text-secondary transition-colors duration-75" href="#">Pricing</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-headline font-black uppercase text-primary mb-4 text-sm">Resources</h4>
+          <ul className="space-y-3">
+            <li><a className="font-body text-xs font-medium uppercase text-primary dark:text-primary-fixed hover:text-secondary transition-colors duration-75" href="#">Security</a></li>
+            <li><a className="font-body text-xs font-medium uppercase text-primary dark:text-primary-fixed hover:text-secondary transition-colors duration-75" href="#">System Status</a></li>
+            <li><a className="font-body text-xs font-medium uppercase text-primary dark:text-primary-fixed hover:text-secondary transition-colors duration-75" href="#">Docs</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-headline font-black uppercase text-primary mb-4 text-sm">Legal</h4>
+          <ul className="space-y-3">
+            <li><a className="font-body text-xs font-medium uppercase text-primary dark:text-primary-fixed hover:text-secondary transition-colors duration-75" href="#">Terms</a></li>
+            <li><a className="font-body text-xs font-medium uppercase text-primary dark:text-primary-fixed hover:text-secondary transition-colors duration-75" href="#">Privacy</a></li>
+          </ul>
+        </div>
+      </footer>
     </>
   );
-};
-
-export default AutoTestLanding;
+}

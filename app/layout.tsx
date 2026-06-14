@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" className="dark" suppressHydrationWarning>
         <body style={{ margin: 0, padding: 0 }}>
           <Provider>
             {children}

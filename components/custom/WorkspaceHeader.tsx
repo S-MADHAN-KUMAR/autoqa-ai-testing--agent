@@ -2,36 +2,35 @@
 
 import { UserButton } from '@clerk/nextjs'
 import Image from 'next/image'
+import Link from 'next/link'
 import React, { useContext } from 'react'
 import { UserDetailContext } from '@/context/UserDetailContext'
-import { Coins } from 'lucide-react'
 
 function WorkspaceHeader() {
     const { userDetail } = useContext(UserDetailContext);
 
     return (
-        <div className='flex w-full justify-between p-4 items-center shadow-sm bg-white'>
-            {/* Logo  */}
-            <Image src={'/logo.svg'} alt='logo' width={200} height={200} />
+        <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-2.5 bg-[#0d0d0f]/80 backdrop-blur-md rounded-full mt-3 mx-auto max-w-6xl w-[95%] border-2 border-primary shadow-[4px_4px_0px_0px_rgba(26,26,26,1)] transition-all duration-300">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3">
+                <img alt="AutoQa Logo" className="w-8 h-8 object-contain" src="/logo.png" />
+                <span className="font-headline text-lg font-black tracking-tighter text-primary uppercase">AutoQa</span>
+            </Link>
 
-            {/* menu Options  */}
-            <ul className='flex gap-8 text-sm font-medium'>
-                <li className='hover:text-blue-600 cursor-pointer'>Workspace</li>
-                <li className='hover:text-blue-600 cursor-pointer'>Pricing</li>
-                <li className='hover:text-blue-600 cursor-pointer'>Support</li>
+            {/* Menu Options */}
+            <ul className='hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest text-[#f5f0e8]'>
+                <li>
+                    <Link href="/workspace" className='hover:text-primary cursor-pointer transition-colors'>
+                        Workspace
+                    </Link>
+                </li>
             </ul>
 
-            {/* User Details & Button  */}
+            {/* User Details & Button */}
             <div className='flex items-center gap-4'>
-                {userDetail && (
-                    <div className='flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-100'>
-                        <Coins className='w-4 h-4 text-blue-500' />
-                        {userDetail.credits} Credits
-                    </div>
-                )}
-                <UserButton />
+                <UserButton afterSignOutUrl="/" />
             </div>
-        </div>
+        </nav>
     )
 }
 

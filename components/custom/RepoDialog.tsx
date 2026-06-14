@@ -63,7 +63,7 @@ function RepoDialog({ setRefreshPage }: { setRefreshPage: (refresh: boolean) => 
             html_url: selectedRepo.html_url,
             description: selectedRepo.description,
             userId: userDetail?.id,
-            owner: selectedRepo.owner,
+            owner: typeof selectedRepo.owner === 'object' ? (selectedRepo.owner as any).login : selectedRepo.owner,
             updatedAt: selectedRepo.updated_at,
             language: selectedRepo.language,
             default_branch: selectedRepo.default_branch,
@@ -76,33 +76,52 @@ function RepoDialog({ setRefreshPage }: { setRefreshPage: (refresh: boolean) => 
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
-            <DialogTrigger>
-                <Button>+Add Repo</Button>
+            <DialogTrigger asChild>
+                <Button className="bg-primary text-black font-bold uppercase tracking-wider text-xs border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+                    + Add Repo
+                </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="bg-[#0d0d0f] border-2 border-[#1a1a1a] text-white">
                 <DialogHeader>
-                    <DialogTitle>Add Repository</DialogTitle>
-                    <DialogDescription>
-                        Search and select one of your github repositories
+                    <DialogTitle className="text-2xl font-black uppercase text-white tracking-tight">Add Repository</DialogTitle>
+                    <DialogDescription className="text-zinc-400">
+                        Search and select one of your GitHub repositories
                     </DialogDescription>
                 </DialogHeader>
                 <div>
-                    <Input placeholder='Search Repos by Name' onChange={(event) => setSearchTerm(event.target.value)} />
+                    <Input 
+                        placeholder='Search Repos by Name' 
+                        onChange={(event) => setSearchTerm(event.target.value)} 
+                        className="bg-[#09090b] border-2 border-[#1a1a1a] text-white focus:border-primary placeholder-zinc-500"
+                    />
                     {/* Repo List */}
-                    <ul className='max-h-60 overflow-y-auto border rounded-xl mt-4'>
+                    <ul className='max-h-60 overflow-y-auto border-2 border-[#1a1a1a] rounded-xl mt-4 bg-[#09090b] divide-y divide-[#1a1a1a]'>
                         {filteredRepoList.map((repo) => (
-                            <li className={`p-4 border-b hover:bg-gray-100 cursor-pointer
-                                ${selectedRepo?.id == repo.id ? 'bg-gray-100' : null}`}
-                                onClick={() => setSelectedRepo(repo)}>{repo.full_name}</li>
+                            <li 
+                                key={repo.id}
+                                className={`p-4 hover:bg-[#121214] cursor-pointer text-[#f5f0e8] transition-colors
+                                    ${selectedRepo?.id == repo.id ? 'bg-[#18181b] text-primary font-bold border-l-4 border-l-primary' : ''}`}
+                                onClick={() => setSelectedRepo(repo)}
+                            >
+                                {repo.full_name}
+                            </li>
                         ))}
                     </ul>
                 </div>
-                <DialogFooter className='flex gap-5'>
-                    <DialogClose>Cancel</DialogClose>
-                    <Button onClick={() => SaveRepoToDB()}>Add</Button>
+                <DialogFooter className='flex flex-row gap-3 justify-end mt-4'>
+                    <DialogClose asChild>
+                        <Button variant="outline" className="border-2 border-[#1a1a1a] bg-transparent text-[#f5f0e8] hover:bg-[#121214] font-bold uppercase tracking-wider text-xs rounded-none">
+                            Cancel
+                        </Button>
+                    </DialogClose>
+                    <Button 
+                        onClick={() => SaveRepoToDB()}
+                        className="bg-primary text-black font-bold uppercase tracking-wider text-xs border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                    >
+                        Add
+                    </Button>
                 </DialogFooter>
             </DialogContent>
-
         </Dialog>
     )
 }

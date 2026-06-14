@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -45,18 +47,19 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
   --animate-meteor: meteor 5s linear infinite;
-  @keyframes meteor {
+}
+
+@keyframes meteor {
   0% {
     transform: rotate(var(--angle)) translateX(0);
     opacity: 1;
-    }
+  }
   70% {
     opacity: 1;
-    }
+  }
   100% {
     transform: rotate(var(--angle)) translateX(-500px);
     opacity: 0;
-    }
   }
 }
 
@@ -136,5 +139,57 @@
 
   body {
     @apply bg-background text-foreground;
+    background-color: #09090b;
+    color: #f5f0e8;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-headline {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .neo-brutalist-border {
+    border: 3px solid #1a1a1a;
+  }
+
+  .neo-brutalist-shadow {
+    box-shadow: 6px 6px 0px 0px #1a1a1a;
+  }
+
+  .neo-brutalist-shadow-hover:hover {
+    box-shadow: 2px 2px 0px 0px #1a1a1a;
+    transform: translate(4px, 4px);
+  }
+
+  .tilt-card {
+    transition: transform 0.2s ease-out;
+    transform-style: preserve-3d;
+  }
+
+  .pipeline-gradient {
+    background: linear-gradient(90deg, #7c3aed, #06b6d4);
+  }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .metallic-text {
+    background: linear-gradient(135deg, #7c3aed 0%, #ffffff 50%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% auto;
+    animation: shine 5s linear infinite;
+  }
+
+  @keyframes shine {
+    to { background-position: 200% center; }
   }
 }

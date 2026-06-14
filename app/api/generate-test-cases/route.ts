@@ -1,16 +1,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI, Type } from "@google/genai";
-
 import { db } from "@/db";
 import { cookies } from "next/headers";
 import { TestCasesTable, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-
-const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY!,
-});
-
+ 
 const ALLOWED_EXTENSIONS = [
     ".js",
     ".jsx",
@@ -147,7 +141,7 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const cookiesStore = await cookies();
-        const githubToken = cookiesStore.get('gh_token')?.value;
+        let githubToken = cookiesStore.get('gh_token')?.value;
 
         const {
             userId,
@@ -155,27 +149,31 @@ export async function POST(req: NextRequest) {
             owner,
             repo,
             branch = "main",
+            githubToken: bodyGithubToken
         } = body;
 
-        if (!userId || !owner || !repo || !githubToken) {
+        if (!githubToken && bodyGithubToken) {
+            githubToken = bodyGithubToken;
+        }
+
+        const missingFields = [];
+        if (!userId) missingFields.push('userId');
+        if (!owner) missingFields.push('owner');
+        if (!repo) missingFields.push('repo');
+        if (!githubToken) missingFields.push('githubToken');
+
+        if (missingFields.length > 0) {
             return NextResponse.json(
                 {
-                    error: "userId, owner, repo and githubToken are required",
+                    error: `Missing required fields: ${missingFields.join(', ')}`,
                 },
                 { status: 400 }
             );
         }
 
-        // Check user credits
         const [user] = await db.select().from(users).where(eq(users.id, Number(userId)));
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
-        }
-        if (user.credits < 200) {
-            return NextResponse.json(
-                { error: "Insufficient credits to generate test cases. Required: 200 credits." },
-                { status: 402 } // Payment Required
-            );
         }
 
         // 1. Get repo tree
@@ -183,7 +181,7 @@ export async function POST(req: NextRequest) {
             owner,
             repo,
             branch,
-            githubToken,
+            githubToken: githubToken!,
         });
 
         // 2. Read useful files
@@ -194,7 +192,7 @@ export async function POST(req: NextRequest) {
                     repo,
                     branch,
                     path: file.path,
-                    githubToken,
+                    githubToken: githubToken!,
                 })
             )
         );
@@ -255,80 +253,61 @@ Important rules:
 - Do not invent fake target files.
 - If route is unclear, infer from Next.js app/page structure.
 - Keep description short, only one line.
-- Return only valid JSON.
+- Return ONLY valid JSON matching this exact structure:
+{
+  "testCases": [
+    {
+      "title": "...",
+      "description": "...",
+      "type": "ui",
+      "priority": "high",
+      "targetRoute": "/",
+      "targetFiles": ["app/page.tsx"],
+      "expectedResult": "..."
+    }
+  ]
+}
+- Do NOT wrap the JSON in markdown blocks (like \`\`\`json). Just return the raw JSON object.
 `;
 
-        const response = await ai.models.generateContent({
-            model: "gemini-3.1-flash-lite",
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        testCases: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    title: {
-                                        type: Type.STRING,
-                                    },
-                                    description: {
-                                        type: Type.STRING,
-                                    },
-                                    type: {
-                                        type: Type.STRING,
-                                        enum: [
-                                            "ui",
-                                            "auth",
-                                            "api",
-                                            "form",
-                                            "integration",
-                                            "edge-case",
-                                        ],
-                                    },
-                                    priority: {
-                                        type: Type.STRING,
-                                        enum: ["low", "medium", "high"],
-                                    },
-                                    targetRoute: {
-                                        type: Type.STRING,
-                                    },
-                                    targetFiles: {
-                                        type: Type.ARRAY,
-                                        items: {
-                                            type: Type.STRING,
-                                        },
-                                    },
-                                    expectedResult: {
-                                        type: Type.STRING,
-                                    },
-                                },
-                                required: [
-                                    "title",
-                                    "description",
-                                    "type",
-                                    "priority",
-                                    "targetRoute",
-                                    "targetFiles",
-                                    "expectedResult",
-                                ],
-                            },
-                        },
-                    },
-                    required: ["testCases"],
-                },
+        const OLLAMA_URL = "https://ollama.com/api/chat";
+        const MODEL = process.env.OLLAMA_CHAT_MODEL || "gpt-oss:120b-cloud";
+        const apiKey = "dcb6386f28784b249d3b0aed4af85c24.arPmt6-vk_tjn-udI9kOQMnA";
+
+        const response = await fetch(OLLAMA_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
             },
+            body: JSON.stringify({
+                model: MODEL,
+                messages: [{ role: "user", content: prompt }],
+                stream: false,
+            }),
         });
 
-        const aiResult = JSON.parse(response.text || "{}");
-        const testCases = aiResult.testCases || [];
+        const data = await response.json();
+        let aiResultStr = data.message?.content || "{}";
+        
+        // Clean up markdown json blocks if any
+        aiResultStr = aiResultStr.replace(/```json/g, "").replace(/```/g, "").trim();
+        
+        let aiResult;
+        try {
+            aiResult = JSON.parse(aiResultStr);
+        } catch (e) {
+            console.error("Failed to parse JSON from Ollama:", aiResultStr);
+            return NextResponse.json({ error: "Failed to parse test cases from AI response." }, { status: 500 });
+        }
+
+        const testCases = Array.isArray(aiResult) ? aiResult : (aiResult.testCases || []);
 
         if (!testCases.length) {
+            console.error("Ollama response did not contain test cases:", aiResultStr);
             return NextResponse.json(
                 {
-                    error: "Gemini did not generate any test cases",
+                    error: "Ollama did not generate any test cases",
                 },
                 { status: 400 }
             );
@@ -359,16 +338,11 @@ Important rules:
             )
             .returning();
 
-        // 6. Deduct 200 credits
-        const newCredits = user.credits - 200;
-        await db.update(users).set({ credits: newCredits }).where(eq(users.id, Number(userId)));
-
         return NextResponse.json({
             success: true,
             message: "Test cases generated successfully",
             count: insertedTestCases.length,
             testCases: insertedTestCases,
-            credits: newCredits,
         });
     } catch (error: any) {
         console.error("Generate test cases error:", error);

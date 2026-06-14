@@ -140,10 +140,6 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
 
                 const data = res.data;
 
-                if (data.credits !== undefined) {
-                    setUserDetail((prev: any) => ({ ...prev, credits: data.credits }));
-                }
-
                 setResults((prev) => ({
                     ...prev,
                     [tcId]: {
@@ -158,10 +154,6 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                 }));
             } catch (err: any) {
                 const errMsg = err.response?.data?.error || err.message || "Execution failed";
-                
-                if (err.response?.data?.credits !== undefined) {
-                    setUserDetail((prev: any) => ({ ...prev, credits: err.response.data.credits }));
-                }
 
                 setResults((prev) => ({
                     ...prev,
