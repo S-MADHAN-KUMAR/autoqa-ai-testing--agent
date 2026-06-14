@@ -4,8 +4,11 @@ import type { Metadata } from "next";
 import Provider from "./provider";
 
 export const metadata: Metadata = {
-  title: "Testify AI | AI Test Automation Agent",
-  description: "AI Test Automation Agent",
+  title: "AutoQA | AI Test Agent",
+  description: "AI Test Agent",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({
