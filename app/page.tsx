@@ -65,7 +65,7 @@ export default function AutoQaPage() {
     <>
       <div className="fixed inset-0 z-[-1] opacity-40"></div>
 
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-2 bg-surface/80 backdrop-blur-md dark:bg-surface/80 rounded-full mt-3 mx-auto max-w-6xl w-[95%] border-2 border-primary dark:border-outline-variant shadow-[4px_4px_0px_0px_rgba(26,26,26,1)] transition-all duration-300">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-2 bg-surface/80 backdrop-blur-md dark:bg-surface/80  mt-3 mx-auto max-w-6xl w-[95%] border-2 border-primary dark:border-outline-variant shadow-[4px_4px_0px_0px_rgba(26,26,26,1)] transition-all duration-300">
         {/* Logo */}
         <div className="flex items-center gap-3">
           <img alt="AutoQa Logo" className="w-8 h-8 object-contain" src="/logo.png" />
@@ -115,14 +115,14 @@ export default function AutoQaPage() {
               Ship Code <br />With <br />Confidence
             </h1>
             <p className="text-base font-medium text-on-surface-variant/80 max-w-xl mb-8 border-l-4 border-primary pl-4">
-              The world&apos;s first AI-native testing agent that writes, executes, and auto-heals E2E tests in real-time. No more flaky CI/CD.
+              The AI Test Agent for developers. Ship faster with automated testing. Free to use and esay to setup .
             </p>
             <div className="flex flex-wrap gap-4">
               <button className="px-7 py-3 bg-primary-container text-primary font-black uppercase text-base neo-brutalist-border neo-brutalist-shadow transition-all active:translate-y-1 active:translate-x-1 active:shadow-none">
                 Connect GitHub Repo
               </button>
               <button className="px-7 py-3 bg-white text-primary font-black uppercase text-base border-2 border-primary hover:bg-surface-container transition-all">
-                View Demo
+                Start Now
               </button>
             </div>
           </div>
@@ -262,7 +262,7 @@ export default function AutoQaPage() {
               <div className="relative h-full p-6 overflow-hidden bg-white text-primary">
                 <div className="flex justify-between items-start mb-8">
                   <h3 className="text-2xl font-black uppercase leading-tight">AI Test<br />Generation</h3>
-                  <span className="material-symbols-outlined text-4xl">model_training</span>
+                 
                 </div>
                 <p className="text-base font-medium mb-6 max-w-md">Our LLM agents browse your application like a human, understanding context and edge cases to build comprehensive test suites in minutes, not weeks.</p>
                 <div className="h-36 w-full bg-on-secondary/5 neo-brutalist-border p-3 font-mono text-sm">
@@ -320,7 +320,167 @@ export default function AutoQaPage() {
         </div>
       </section>
 
-      <footer className="w-full border-t-4 border-primary mt-14 bg-surface dark:bg-surface grid grid-cols-1 md:grid-cols-4 gap-6 px-8 py-10 max-w-full">
+      <section className="py-16 px-6 bg-primary/5 border-t-4 border-primary">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-14 gap-6">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-3">How To Use</h2>
+              <p className="text-on-surface-variant/70 text-sm uppercase font-bold tracking-widest">Get started in 4 simple steps</p>
+            </div>
+            <div className="text-right hidden md:block">
+              <span className="text-6xl font-black text-primary/10">02</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Step 1 */}
+            <div className="p-6 bg-white neo-brutalist-border neo-brutalist-shadow group hover:-translate-y-1 transition-transform">
+              <div className="w-12 h-12 bg-primary text-white font-black text-xl flex items-center justify-center neo-brutalist-border mb-6 group-hover:scale-110 transition-transform">1</div>
+              <h3 className="text-xl font-black uppercase mb-3  text-black">Connect Repo</h3>
+              <p className="text-sm font-medium text-on-surface-variant/80 text-black">Link your GitHub repository to AutoQa. We automatically detect your framework and configuration.</p>
+            </div>
+            
+            {/* Step 2 */}
+            <div className="p-6 bg-primary-container text-primary neo-brutalist-border neo-brutalist-shadow group hover:-translate-y-1 transition-transform">
+              <div className="w-12 h-12 bg-white text-primary font-black text-xl flex items-center justify-center neo-brutalist-border mb-6 group-hover:scale-110 transition-transform">2</div>
+              <h3 className="text-xl font-black uppercase mb-3">Set Target</h3>
+              <p className="text-sm font-medium text-primary/80">Provide your application URL (staging or production). No complex setup or SDK installation required.</p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="p-6 bg-primary text-white neo-brutalist-border neo-brutalist-shadow group hover:-translate-y-1 transition-transform">
+              <div className="w-12 h-12 bg-white text-primary font-black text-xl flex items-center justify-center neo-brutalist-border mb-6 group-hover:scale-110 transition-transform">3</div>
+              <h3 className="text-xl font-black uppercase mb-3">Agent Run</h3>
+              <p className="text-sm font-medium text-white/80">Our AI agents explore your app, identify key user flows, and generate a comprehensive E2E test suite.</p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="p-6 bg-[#06b6d4] text-white neo-brutalist-border neo-brutalist-shadow group hover:-translate-y-1 transition-transform">
+              <div className="w-12 h-12 bg-white text-[#06b6d4] font-black text-xl flex items-center justify-center neo-brutalist-border mb-6 group-hover:scale-110 transition-transform">4</div>
+              <h3 className="text-xl font-black uppercase mb-3">Review & Merge</h3>
+              <p className="text-sm font-medium text-white/80">Review execution traces and videos. Approve the generated tests and merge them directly into your repo.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 border-t-4 border-primary bg-surface">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-14 gap-6">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-3">Integrations</h2>
+              <p className="text-on-surface-variant/70 text-sm uppercase font-bold tracking-widest">Works where you work</p>
+            </div>
+            <div className="text-right hidden md:block">
+              <span className="text-6xl font-black text-primary/10">03</span>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap justify-center gap-4">
+            {['Playwright', 'Cypress', 'Selenium', 'Next.js', 'React', 'Vue', 'GitHub Actions', 'GitLab CI'].map((tech) => (
+              <div key={tech} className="px-6 py-3 bg-white text-primary neo-brutalist-border neo-brutalist-shadow hover:-translate-y-1 hover:-translate-x-1 transition-transform font-bold uppercase text-sm">
+                {tech}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 bg-surface-container/10 border-t-4 border-primary">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-14 gap-6">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-3">Pricing</h2>
+              <p className="text-on-surface-variant/70 text-sm uppercase font-bold tracking-widest">Simple, transparent plans</p>
+            </div>
+            <div className="text-right hidden md:block">
+              <span className="text-6xl font-black text-primary/10">04</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4">
+            {/* Hobby Plan */}
+            <div className="p-8 bg-white neo-brutalist-border neo-brutalist-shadow flex flex-col hover:-translate-y-2 transition-transform">
+              <h3 className="text-2xl font-black uppercase mb-2 text-primary">Hobby</h3>
+              <div className="text-4xl font-black mb-6 text-primary">$0<span className="text-lg text-on-surface-variant/50">/mo</span></div>
+              <ul className="space-y-4 mb-8 flex-1 font-medium text-sm text-primary">
+                <li className="flex items-center gap-2">✓ 100 test runs / month</li>
+                <li className="flex items-center gap-2">✓ Auto-healing enabled</li>
+                <li className="flex items-center gap-2">✓ Community support</li>
+              </ul>
+              <button className="w-full py-3 bg-primary-container text-primary font-black uppercase text-sm neo-brutalist-border hover:bg-primary/20 transition-colors">Start Free</button>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="p-8 bg-primary text-white neo-brutalist-border neo-brutalist-shadow md:scale-105 flex flex-col hover:-translate-y-2 transition-transform relative z-10">
+              <div className="absolute -top-3 right-4 px-3 py-1 bg-[#fcd34d] text-black text-xs font-black uppercase neo-brutalist-border rotate-3">Most Popular</div>
+              <h3 className="text-2xl font-black uppercase mb-2">Pro</h3>
+              <div className="text-4xl font-black mb-6">$49<span className="text-lg text-white/50">/mo</span></div>
+              <ul className="space-y-4 mb-8 flex-1 font-medium text-sm">
+                <li className="flex items-center gap-2">✓ Unlimited test runs</li>
+                <li className="flex items-center gap-2">✓ CI/CD Integration</li>
+                <li className="flex items-center gap-2">✓ Parallel execution</li>
+                <li className="flex items-center gap-2">✓ Priority support</li>
+              </ul>
+              <button className="w-full py-3 bg-white text-primary font-black uppercase text-sm neo-brutalist-border shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">Upgrade to Pro</button>
+            </div>
+
+            {/* Enterprise Plan */}
+            <div className="p-8 bg-[#06b6d4] text-white neo-brutalist-border neo-brutalist-shadow flex flex-col hover:-translate-y-2 transition-transform">
+              <h3 className="text-2xl font-black uppercase mb-2">Enterprise</h3>
+              <div className="text-4xl font-black mb-6">Custom</div>
+              <ul className="space-y-4 mb-8 flex-1 font-medium text-sm">
+                <li className="flex items-center gap-2">✓ Custom SLA</li>
+                <li className="flex items-center gap-2">✓ Dedicated account manager</li>
+                <li className="flex items-center gap-2">✓ On-premise deployment</li>
+                <li className="flex items-center gap-2">✓ Custom integrations</li>
+              </ul>
+              <button className="w-full py-3 bg-transparent border-2 border-white text-white font-black uppercase text-sm hover:bg-white hover:text-[#06b6d4] transition-colors">Contact Us</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 bg-[#fcd34d] border-t-4 border-primary text-black">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-3">FAQ</h2>
+            <p className="text-black/70 text-sm uppercase font-bold tracking-widest">Everything you need to know</p>
+          </div>
+          
+          <div className="space-y-4">
+            {[
+              { q: 'How does the AI generate tests?', a: 'Our agent browses your app like a human, maps the DOM, and figures out the key user paths, generating optimal Playwright scripts.' },
+              { q: 'What happens if my UI changes?', a: 'AutoQa automatically detects structural changes and heals the tests without requiring manual intervention.' },
+              { q: 'Can I run tests in my own CI?', a: 'Yes! You can run our agent locally or integrate it smoothly into GitHub Actions, GitLab, or CircleCI.' }
+            ].map((faq, i) => (
+              <div key={i} className="p-6 bg-white neo-brutalist-border neo-brutalist-shadow group">
+                <h4 className="font-black uppercase text-lg mb-2 flex justify-between items-center cursor-pointer text-primary">
+                  {faq.q}
+                  <span className="text-primary text-2xl group-hover:rotate-90 transition-transform">+</span>
+                </h4>
+                <p className="font-medium text-sm text-black/80">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24 px-6 border-t-4 border-primary bg-[#7c3aed] text-white overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rotate-45 transform translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-10 rotate-12 transform -translate-x-1/4 translate-y-1/4"></div>
+
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-6">Ready To Ship<br />Faster?</h2>
+          <p className="text-lg md:text-xl font-medium mb-10 max-w-2xl mx-auto opacity-90">Stop writing brittle tests. Let our AI do the heavy lifting while you focus on building great features.</p>
+          
+          <button className="px-10 py-4 bg-white text-[#7c3aed] font-black uppercase text-xl neo-brutalist-border shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1.5 hover:translate-y-1.5 transition-all">
+            Get Started For Free
+          </button>
+        </div>
+      </section>
+
+      <footer className="w-full border-t-4 border-primary mt-0 bg-surface dark:bg-surface grid grid-cols-1 md:grid-cols-4 gap-6 px-8 py-10 max-w-full">
         <div className="md:col-span-1">
           <h2 className="text-2xl font-display font-black text-primary uppercase mb-3">AutoQa</h2>
           <p className="font-body text-xs font-medium uppercase text-on-surface-variant/70 leading-relaxed">
