@@ -68,15 +68,6 @@ Set `NEXT_PUBLIC_APP_URL` to your local development server URL.
 4. Copy the **Publishable Key** and **Secret Key**.
 5. Paste them into `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` respectively.
 
-#### D. Stripe Payments
-1. Go to [Stripe.com](https://stripe.com/) and create an account or log in.
-2. Make sure you are in **Test Mode** (toggle in the top right).
-3. Navigate to **Developers -> API keys**.
-4. Copy the **Publishable key** (`pk_test_...`) and **Secret key** (`sk_test_...`) into `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY`.
-5. To get the `STRIPE_WEBHOOK_SECRET`, install the [Stripe CLI](https://docs.stripe.com/stripe-cli).
-6. Run `stripe login` to authenticate the CLI.
-7. Run `stripe listen --forward-to localhost:3000/api/webhooks/stripe` (adjust the path if your webhook route is different).
-8. The CLI will output a webhook signing secret (`whsec_...`). Paste this into `STRIPE_WEBHOOK_SECRET`.
 
 #### E. GitHub OAuth
 1. Log in to your GitHub account.
@@ -87,13 +78,8 @@ Set `NEXT_PUBLIC_APP_URL` to your local development server URL.
    - Authorization callback URL: `http://localhost:3000/api/github/callback`
 5. Click **Register application**.
 6. Copy the **Client ID** into `GITHUB_CLIENT_ID`.
-7. Click **Generate a new client secret** and copy it into `GITHUB_CLIENT_SECRET`.
-
-#### F. Google Gemini API
-1. Go to [Google AI Studio](https://aistudio.google.com/).
-2. Sign in with your Google account.
-3. Click on **Get API key** or go to the **API Keys** section.
-4. Create a new API key and copy it into `GEMINI_API_KEY`.
+7. Click **Generate a new client secret** and copy it into `GITHUB_CLIENT_SECRET`
+8. 
 
 #### G. Browserbase API
 1. Go to [Browserbase.com](https://www.browserbase.com/) and create an account.
